@@ -1,8 +1,63 @@
-name: Hello Action           # 流程名字
-on: [push]                   # 触发条件：当有人提交代码时
+name: Interactive Deployment Demo
+
+# 这里的 'on' 定义了交互入口
+on:
+  push:
+    branches: [ main ]      # 代码提交到 main 时触发
+  workflow_dispatch:        # 关键：允许手动在 UI 界面点击 "Run workflow"
+    inputs:
+      environment:          # 交互：让用户选择部署环境
+        description: '选择部署环境'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      deploy_debug:         # 交互：让用户勾选是否开启调试模式
+        description: '开启调试日志?'
+        required: false
+        type: boolean
+        default: false
+
 jobs:
-  build:                     # 具体要做的工作
-    runs-on: ubuntu-latest   # 在 Linux 环境运行
+  # 任务 1：模拟构建
+  build:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4  # 第一步：把代码拉下来
-      - run: echo "Hello World"    # 第二步：打印一句话
+      - uses: actions/checkout@v4
+      
+      - name: Build Application
+        run: |
+          echo "正在构建项目..."
+          mkdir output
+          echo "Build result at $(date)" > output/result.txt
+          
+      - name: Upload Artifact  # 交互：产物上传，你可以在 GitHub 页面下载它
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-assets
+          path: output/
+
+  # 任务 2：模拟部署（依赖构建任务）
+  deploy:
+    needs: build             # 只有 build 成功了，这个任务才会跑
+    runs-on: ubuntu-latest
+    # 这里的 env 会根据你在手动触发时选的参数变化
+    env:
+      ENV_NAME: ${{ github.event.inputs.environment || 'automatic-push' }}
+    
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-assets
+
+      - name: Deploy Step
+        run: |
+          echo "🚀 正在部署到: $ENV_NAME"
+          echo "检查构建文件内容:"
+          cat result.txt
+          if [ "${{ github.event.inputs.deploy_debug }}" == "true" ]; then
+            echo "调试模式已开启：当前运行路径是 $(pwd)"
+          fi
