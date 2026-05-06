@@ -1,0 +1,8 @@
+name: Hello Action           # 流程名字
+on: [push]                   # 触发条件：当有人提交代码时
+jobs:
+  build:                     # 具体要做的工作
+    runs-on: ubuntu-latest   # 在 Linux 环境运行
+    steps:
+      - uses: actions/checkout@v4  # 第一步：把代码拉下来
+      - run: echo "Hello World"    # 第二步：打印一句话
